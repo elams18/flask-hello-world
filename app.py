@@ -45,7 +45,12 @@ def index():
 @app.route("/api/messages")
 def list_messages():
     db = get_db()
-    messages = [json.loads(res[0]) for res in db.cursor().execute("select * from message").fetchall()]
+    # validation for empty message
+    results = db.cursor().execute("select * from message").fetchall()
+    if results is not None:
+        messages = [json.loads(res[0]) for res in results]
+    else:
+        messages = []
     message_count = db.cursor().execute("select count(*) from message").fetchone()[0]
     return {"Response": "ok", "messages": messages, "total_messages": message_count}
 
