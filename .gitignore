@@ -1,2 +1,3 @@
 __init__.py
 database.db
+/.venv/
