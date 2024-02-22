@@ -2,8 +2,7 @@ import json
 import sqlite3
 from os import getenv
 from flask import Flask, request, g
-
-from .featureflag import FeatureFlags
+from featureflag import FeatureFlags
 
 app = Flask(__name__)
 
@@ -22,8 +21,10 @@ def close_connection(exception):
         db.close()
 
 
-def add_message(message, type="prod", payload={}):
+def add_message(message, type="prod", payload=None):
     db = get_db()
+    if payload is None:
+        payload = {}
     payload.update(
         {
             "message": message,
@@ -44,8 +45,8 @@ def index():
 @app.route("/api/messages")
 def list_messages():
     db = get_db()
-    messages = db.cursor().execute("select * from message")
-    message_count = db.cursor().execute("select count(*) from message").fetchone()
+    messages = [json.loads(res[0]) for res in db.cursor().execute("select * from message").fetchall()]
+    message_count = db.cursor().execute("select count(*) from message").fetchone()[0]
     return {"Response": "ok", "messages": messages, "total_messages": message_count}
 
 
@@ -59,7 +60,7 @@ def create_messages():
     # }
     data = request.json
 
-    if "payload" in data and not FeatureFlags.get("PAYLOAD_ENABLED"):
+    if "payload" in data and not FeatureFlags.get("PAYLOAD_ENABLED", False):
         raise Exception("You havn't paid for Payload feature.")
 
     add_message(data["message"], data["type"], data.get("payload"))
@@ -73,9 +74,9 @@ if __name__ == "__main__":
     with app.app_context():
         db = get_db()
         db.cursor().execute("""
-            create table message (
+            create table if not exists message (
                 payload char
-            );
+            ) ;
         """)
         db.commit()
 
@@ -86,4 +87,4 @@ if __name__ == "__main__":
         add_message("message 3", payload={"numbers": [1, 2, 3]})
         add_message("message 4", "Production")
 
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=5000, debug=True)
