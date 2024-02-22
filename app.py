@@ -1,7 +1,7 @@
 import json
 import sqlite3
 from os import getenv
-from flask import Flask, request, g
+from flask import Flask, request, g, make_response
 from featureflag import FeatureFlags
 
 app = Flask(__name__)
@@ -59,11 +59,15 @@ def create_messages():
     #   "payload": {} // optional
     # }
     data = request.json
+    if "message" not in data or "type" not in data:
+        return Exception("You must provide message/type parameter")
+
 
     if "payload" in data and not FeatureFlags.get("PAYLOAD_ENABLED", False):
         raise Exception("You havn't paid for Payload feature.")
 
     add_message(data["message"], data["type"], data.get("payload"))
+    return make_response({"success": "created message"}, 201)
 
 
 if __name__ == "__main__":
